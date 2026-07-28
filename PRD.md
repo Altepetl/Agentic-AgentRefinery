@@ -867,21 +867,42 @@ Rail's `context/` bundle.
 ## 12. Cross-platform delivery
 
 Confirmed via research at design time: Claude Code, Google Antigravity,
-Kimi Code CLI, and ZCode all converged on the same open **Agent Skills**
-format — a directory with a `SKILL.md` (frontmatter metadata +
-instructions) plus optional supporting files, loaded on demand. No
-per-platform adapter logic is needed; only the install path differs:
+Cursor, ZCode, Kimi Code CLI, and OpenAI Codex CLI all converged on the
+same open **Agent Skills** format — a directory with a `SKILL.md`
+(frontmatter metadata + instructions) plus optional supporting files,
+loaded on demand. No per-platform adapter logic is needed; only the
+install path differs:
 
-- **Claude Code**: `.claude/skills/`
+- **Claude Code**: `.claude/skills/` (project) or `~/.claude/skills/`
+  (global)
 - **Google Antigravity**: `.agent/skills/` (workspace) or
   `~/.gemini/antigravity/skills/` (global)
-- **Kimi Code CLI**: discovered via layered skill roots
-- **ZCode**: plugin/skills directory (can also bundle into a plugin)
+- **Cursor**: `.cursor/skills/` — project-scoped only, no personal/global
+  directory
+- **ZCode**: `.zcode/skills/` (project) or `~/.config/zcode/skills/`
+  (global)
+- **Kimi Code CLI**: `.kimi-code/skills/` (project) or
+  `~/.kimi-code/skills/` (global) — one of several layered skill roots it
+  scans
+- **OpenAI Codex CLI**: `.codex/skills/` (project) or `~/.codex/skills/`
+  (global)
+- **Generic fallback**: `.agents/skills/` — a shared convention also read
+  by Gemini CLI, VS Code Copilot, and other Agent-Skills-compatible tools
 
 Because every generated `process-name/SKILL.md` and
 `process-name-validation/SKILL.md` is a standard Agent Skill package (via
 the `skill-creator` hard prerequisite, §13), a Rail built once is
 installable on any of these platforms without modification.
+
+**Installer**: the AgentRefinery commands themselves (not the Rails they
+produce) are installable into any of the targets above via
+`npx agent-refinery install` (`bin/cli.js`, package root `package.json`).
+It copies `skills/agentrefinery-design`, `skills/agentrefinery-build`, and
+`skills/agentrefinery-build-validation` into the chosen target's install
+path from the table above. This installer is scoped to AgentRefinery's own
+3 commands — it has no role in installing a generated Rail's
+`process-name`/`process-name-validation` skills, which are installed the
+same manual way as any other Agent Skill package.
 
 ---
 
@@ -944,12 +965,14 @@ AgentRefinery/
 │   ├── agentrefinery-design/SKILL.md
 │   ├── agentrefinery-build/SKILL.md
 │   └── agentrefinery-build-validation/SKILL.md
-└── templates/                             ← base templates for the 5 context docs
-    ├── Design.md
-    ├── Backbone.md
-    ├── Workflow.md
-    ├── Validation.md
-    └── Readme.md
+├── templates/                             ← base templates for the 5 context docs
+│   ├── Design.md
+│   ├── Backbone.md
+│   ├── Workflow.md
+│   ├── Validation.md
+│   └── Readme.md
+├── package.json                           ← npm package metadata for the installer (§12)
+└── bin/cli.js                             ← `npx agent-refinery install` entry point
 ```
 
 This is the **builder repo** — it is not itself a Rail. It produces

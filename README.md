@@ -28,6 +28,61 @@ with rewriting code.
 
 That guide is the Rail.
 
+## Installing the AgentRefinery skills
+
+AgentRefinery ships its 3 commands as installable Agent Skills
+(`skills/agentrefinery-design`, `skills/agentrefinery-build`,
+`skills/agentrefinery-build-validation`). Once this package is published,
+installing all of them into a target tool is one command:
+
+```bash
+npx agent-refinery install
+```
+
+This prompts for which target(s) to install into and copies the 3 skills
+into that tool's skills directory. To skip the prompt:
+
+```bash
+npx agent-refinery install --target claude,cursor
+```
+
+**Testing against a local clone** (before the package is published, e.g. to
+try a change to a `SKILL.md`): run it from inside the cloned repo instead —
+`npx .` runs the current directory as the package, `bin/cli.js`'s bin entry
+is picked up the same way `agent-refinery` would be once published:
+
+```bash
+git clone <this-repo-url>
+cd AgentRefinery
+npx . install --target claude
+# or, equivalently:
+node bin/cli.js install --target claude
+```
+
+Supported targets (`npx agent-refinery list` prints this same table with
+each installed skill):
+
+| Target key    | Platform          | Install path                                                        |
+|---------------|--------------------|----------------------------------------------------------------------|
+| `claude`      | Claude Code        | `.claude/skills/` (project) or `~/.claude/skills/` (`--global`)     |
+| `antigravity` | Google Antigravity | `.agent/skills/` (project) or `~/.gemini/antigravity/skills/` (`--global`) |
+| `cursor`      | Cursor             | `.cursor/skills/` (project-scoped only, no personal directory)       |
+| `zcode`       | ZCode              | `.zcode/skills/` (project) or `~/.config/zcode/skills/` (`--global`) |
+| `kimi`        | Kimi Code CLI      | `.kimi-code/skills/` (project) or `~/.kimi-code/skills/` (`--global`) |
+| `codex`       | OpenAI Codex CLI   | `.codex/skills/` (project) or `~/.codex/skills/` (`--global`)        |
+| `agents`      | Generic            | `.agents/skills/` — the shared convention also read by Gemini CLI, VS Code Copilot, and other Agent-Skills-compatible tools |
+
+Pass `--dir <path>` to install into a project other than the current
+directory, and `--global` to install to a platform's user-level directory
+instead of the project-level one (ignored for platforms, like Cursor, that
+only support project scope). Run `npx agent-refinery help` for the full
+option list.
+
+`agentrefinery-build` and `agentrefinery-build-validation` both have a hard
+prerequisite on the separate [skill-creator](https://claude.com/plugins/skill-creator)
+skill — install it the same way into whichever tool you're using before
+running either command; see "Minimum requirements" below.
+
 ## Why "Rail" — and why it's the actual product
 
 A rail fixes the path a train follows; it doesn't drive the train. The
@@ -269,9 +324,11 @@ they are what the pipeline produces.
 - [skill-creator](https://claude.com/plugins/skill-creator) — `agentrefinery-build`
   always scaffolds `SKILL.md` packages through skill-creator rather than
   hand-rolling them. This is a hard prerequisite.
-- A target platform that supports Agent Skills: Claude Code (`.claude/skills/`),
-  Google Antigravity (`.agent/skills/` or `~/.gemini/antigravity/skills/`), Kimi
-  Code CLI, or ZCode.
+- A target platform that supports Agent Skills — see "Installing the
+  AgentRefinery skills" above for the full list of supported targets and
+  install paths (Claude Code, Google Antigravity, Cursor, ZCode, Kimi Code
+  CLI, OpenAI Codex CLI, and any other tool reading the generic
+  `.agents/skills/` convention).
 
 ## Merging pre-existing Rails
 
