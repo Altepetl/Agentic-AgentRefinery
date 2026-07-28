@@ -4,108 +4,99 @@ Guidance for Claude Code (or any agent) working in this repository.
 
 ## What this repo is
 
-**AgentRefinery** is the builder repo, not a Rail itself. It produces
-**Rails** — a documented process compiled into a guide that fixes the
-mandatory path (verifiable, agent-agnostic) while leaving a judgment zone
-where a more capable LLM's judgment improves the result, without anyone
-rewriting the process. Nothing in this repo is process-specific;
-`templates/` and `skills/` are the fixed tooling that generates Rails
-elsewhere.
+**AgentRefinery does not produce Rails.** That's the sibling
+**AgentRails** repo's job (`/home/rommelmg/Projects/Altepetl/Code/AgentRails`
+if working locally). AgentRefinery consumes an already-built Rail as
+input and owns a narrower, separate concern: comparing and improving a
+Rail's output across N repeated runs, potentially by increasingly capable
+LLMs, without ever modifying the Rail's own definition or how AgentRails
+runs it.
 
-**Before making any non-trivial change, read `PRD.md` in full.** It is the
-canonical, exhaustive spec — every concept, every document's exact
-structure, every state machine, and the rationale behind every naming
-decision. `README.md` is the pitch and quick reference; `PRD.md` is the
-one to trust when they seem to disagree (and if they do disagree, that's
-a bug to fix, not a judgment call to make silently).
+This project is currently **mid-redesign**, following a 2026-07-28 split
+of what used to be one combined project. Large parts of `PRD.md` are
+explicit **open items** (§7), not settled behavior — resist the urge to
+fill those gaps with plausible-sounding invented detail. Either resolve
+with the user, or leave the gap marked open, exactly as documented.
+
+**Before making any non-trivial change, read `PRD.md` in full.** It is
+the canonical spec, and it is unusually explicit about what's settled vs.
+still open.
 
 ## Directory map
 
 ```
 AgentRefinery/
-├── README.md          — pitch, gap thesis, user manual for the 3 commands
-├── PRD.md              — full requirements spec (canonical, read first)
-├── DESIGN-NOTES.md     — session-by-session working design log
+├── README.md          — pitch, current scope, pointer to AgentRails
+├── PRD.md              — full spec: settled mechanism (§5) + open items (§7)
+├── DESIGN-NOTES.md     — session-by-session working design log, incl. the
+│                          now-superseded original combined-project design
 ├── Changelog.md        — this project's own release history
 ├── CONTRIBUTE.md        — contribution conventions
 ├── LICENSE              — MIT, Altepetl
-├── skills/
-│   ├── agentrefinery-design/SKILL.md            — LLM-driven, entry point
-│   ├── agentrefinery-build/SKILL.md              — deterministic
-│   └── agentrefinery-build-validation/SKILL.md   — deterministic
-└── templates/           — base patterns for a Rail's 5 context documents
-    ├── Design.md
-    ├── Backbone.md
-    ├── Workflow.md
-    ├── Validation.md
-    └── Readme.md
+├── skills/              — currently EMPTY (agentrefinery-* not built yet)
+└── templates/           — currently EMPTY (no AgentRefinery-specific
+                            document types designed yet)
 ```
 
 ## Terminology quick reference
 
-(Full glossary: `PRD.md` §16.)
+(Full glossary: `PRD.md` §10.)
 
-- **Rail** — the product: a `context/` bundle (5 documents) + a matched
-  pair of runnable Agent Skills, for a given `process-name`.
-- **Fixed core** — the invariant, verifiable part of a Workflow step.
-- **Judgment zone** — the part of a step left to the executing agent's
-  judgment.
-- **`process-name`** — the durable, user-supplied identifier for a
-  specific Rail. Never invent one.
-- **Backbone.md** — a Rail's single source of truth: objectives (`O#`)
-  and hard limits (`L#`).
+- **Rail** — owned and defined by AgentRails, not this repo.
+- **`process-name`** — a Rail's durable identifier, defined by AgentRails;
+  AgentRefinery reuses it, never invents its own.
+- **`output-process-name/`** — a Rail's runtime output, owned by
+  AgentRails; wiped on every destructive Phase-4 restart. AgentRefinery
+  reads it, never writes to it.
+- **`refinery-process-name/`** — AgentRefinery's own directory,
+  accumulating the best-so-far result across N passes of a Rail.
+- **Refinación / Refinement** — the not-yet-fully-specified step that
+  compares a fresh pass against the accumulated best-so-far and updates it
+  only if the fresh pass is genuinely better. See `PRD.md` §5, §7.
 
-## The 3 commands
+## What's settled vs. open
 
-| Command | Judgment? | Reads | Produces |
-|---|---|---|---|
-| `agentrefinery-design` | Yes — only reasoning step | process description (a PRD works well as-is), optional Rails to merge | `<process-name>/context/*.md` (draft) |
-| `agentrefinery-build` | No — deterministic | `context/{Backbone,Workflow,Readme}.md` | `<process-name>/process-name/SKILL.md` |
-| `agentrefinery-build-validation` | No — deterministic | `context/{Validation,Backbone}.md` | `<process-name>/process-name-validation/SKILL.md` |
+**Settled** (`PRD.md` §5): AgentRefinery mirrors AgentRails' 3-command
+naming pattern (`agentrefinery-design`, `agentrefinery-build`,
+`agentrefinery-build-validation`), kept entirely separate from AgentRails'
+own commands. `agentrefinery-build`'s generated skill copies
+`output-process-name/` into `refinery-process-name/` after each Rail run.
+A "Refinación" step compares the fresh pass against the existing
+`refinery-process-name/` and updates it only if genuinely better.
 
-`agentrefinery-build` and `agentrefinery-build-validation` both have a
-**hard prerequisite**: they must scaffold their target `SKILL.md` through
-the `skill-creator` skill, never hand-rolled. If `skill-creator` isn't
-available, they stop rather than improvise a substitute — don't "fix"
-this by adding a fallback packaging path.
-
-Full command specs: `PRD.md` §7. User-facing manual with an example
-invocation: `README.md`, "User manual" section.
+**Open** (`PRD.md` §7) — do not assume answers to these:
+1. Which command (or concept) actually implements "Refinación."
+2. What concretely defines "better" — the single biggest open question.
+3. Whether comparison happens on the whole output or per-deliverable.
+4. What `agentrefinery-build-validation` validates.
+5. What `agentrefinery-design` does at all.
+6. Whether `refinery-process-name/` needs its own tracking/log file.
+7. Who orchestrates running `process-name` a 2nd/3rd/Nth time.
 
 ## Operating principles for changes in this repo
 
-1. **English only, everywhere** — no exceptions for etymology notes or
-   terms that started as Spanish shorthand in a discussion. This has been
-   corrected twice already in this project's history (`PRD.md` §3); don't
-   reintroduce it.
+1. **English only, everywhere** — no exceptions.
 2. **Command/file names are fully hyphen-separated** —
    `agentrefinery-build-validation`, never `agentrefinery-buildvalidation`.
-3. **Assume nothing; document everything.** This project is read and run
-   by AI agents with no memory of prior sessions as often as by humans.
-   Every command's inputs, preconditions, exact output paths, and
-   error/ambiguity handling must be spelled out explicitly.
-4. **A rename or concept change is not done until every file that
-   mentions it is updated.** The same concept is deliberately documented
-   at multiple levels of detail (`README.md` pitch, `PRD.md` full spec,
-   `SKILL.md` runtime instructions) — grep the whole repo before
-   considering a terminology change finished:
-   ```bash
-   grep -rn "<old-term>" --include="*.md" .
-   ```
-5. **Update `PRD.md` first** for any conceptual or behavioral change, then
-   propagate to `README.md` and the relevant `skills/*/SKILL.md` /
-   `templates/*.md`. Log naming reversals or newly settled questions in
-   `PRD.md` §3 / §17.
+3. **Assume nothing; document everything.** Especially: don't write a
+   `skills/agentrefinery-*/SKILL.md` around an unresolved open item from
+   `PRD.md` §7 — that just relocates the ambiguity instead of resolving it.
+4. **Never modify AgentRails.** No changes to a Rail's `context/`, its
+   `output-process-name/`, or either of its generated skills belong in
+   this repo — if a change seems to require that, it belongs in the
+   sibling AgentRails repo instead.
+5. **Update `PRD.md` first** for any conceptual change — specifically §5
+   (settled mechanism) and §7 (open items) — then propagate to
+   `README.md` and `DESIGN-NOTES.md`.
 
-Full contribution conventions, including how to handle template/skill
-edits and where to test: `CONTRIBUTE.md`.
+Full contribution conventions: `CONTRIBUTE.md`.
 
 ## Testing
 
-No automated test suite exists yet. The first real validation is running
-`agentrefinery-design` against a real, concrete process description and
-checking the generated `context/` bundle for traceability (every
-`Workflow.md` step cites a real `Backbone.md` ID; every objective/hard
-limit is covered by at least one `Validation.md` checklist item). Build
-any test Rails under `/sandbox/` (gitignored) — never commit a generated
-Rail into this repo; a Rail belongs in its own project.
+No automated test suite exists, and no `agentrefinery-*` skill has been
+built yet — `PRD.md` §7's open items block writing a real command spec.
+Once they're resolved and skills exist, the first real validation is
+running a full refinement cycle (multiple passes of an AgentRails-built
+Rail) and checking that `refinery-process-name/` actually ends up holding
+the best result across passes. Build any test artifacts under `/sandbox/`
+(gitignored) — never commit a Rail or a refinement run into this repo.

@@ -315,3 +315,75 @@ AgentRefinery/
    should be running `agentrefinery-design` against a real, concrete process
    description to see whether the generated context bundle actually holds up
    before trusting the pipeline further.
+
+---
+
+## 2026-07-28 — Split back into two sibling projects
+
+Everything above this line describes the **original, combined design**:
+one project, later renamed AgentRails → AgentRefinery, that tried to own
+both "run this process consistently" and "improve this process's result
+across repeated runs" inside a single Phase 4 state-machine step. That
+combined design is now superseded — kept here only as historical record,
+per this file's own "don't rewrite history" rule.
+
+**What changed and why**: the combined Phase 4 (§ above: "clear STATUS/
+START/END/DETAILS in BOTH tracking files... complement existing
+deliverables, never overwrite... append to Changelog.md") conflated two
+different concerns that turned out to need opposite re-run semantics. A
+Rail needs a *destructive* restart to stay simple and verifiable regardless
+of which model runs it. Deciding whether a fresh pass is an *improvement*
+over the last one needs something that survives across restarts. Both
+inside one step meant neither was clean.
+
+**Resolution**: split into two sibling repos, at the same directory level.
+
+- **AgentRails** (new sibling repo) takes everything above in this file
+  that concerns the Rail mechanism itself: the fixed-core/judgment-zone
+  split, the 3-command Rail-building pipeline (renamed
+  `agentrails-design` / `agentrails-build` / `agentrails-build-
+  validation`), the 5-document context bundle, `ProcessTracking.md` /
+  `ValidationTracking.md`, and the escalation rule. Its own Phase 4 is now
+  a plain, destructive restart: ask to re-run, and if yes, delete all of
+  `output-process-name/` and start over from Phase 1. No more "complement,
+  never overwrite," no more per-Rail `Changelog.md`.
+- **AgentRefinery** (this repo) keeps only the refinement concern:
+  comparing a Rail's output across N runs and deciding whether to keep a
+  new pass. `skills/agentrefinery-design/`, `skills/agentrefinery-build/`,
+  `skills/agentrefinery-build-validation/`, and `templates/*.md` (the ones
+  built under the combined design, described above) were **moved** to
+  AgentRails, not copied — this repo's `skills/` and `templates/` are now
+  empty again.
+
+**The proposed mechanism for AgentRefinery**, from the user directly:
+mirror AgentRails' 3-command naming pattern with AgentRefinery's own
+commands. `agentrefinery-build`'s generated skill copies
+`output-process-name/` (produced by AgentRails' `process-name` skill) into
+AgentRefinery's own `refinery-process-name/` directory after each run —
+this keeps AgentRails' output directory clean for its next destructive
+restart. A step referred to as **"Refinación"** then compares the fresh
+`output-process-name/` pass against the existing `refinery-process-name/`
+(the accumulated best-so-far) and, only if the fresh pass is genuinely
+better, writes it into `refinery-process-name/`.
+
+This was described in outline, not as a full command spec — see `PRD.md`
+§7 for the concrete list of what's still unresolved (which command
+implements "Refinación," what defines "better," comparison granularity,
+what `agentrefinery-build-validation` validates, what `agentrefinery-
+design` even does here, and who orchestrates running `process-name` a
+2nd/3rd/Nth time).
+
+## Open items for next session (current)
+
+1. Resolve `PRD.md` §7 items, ideally with the user directly rather than
+   guessing — especially "what defines better," since that's the concept
+   the rest of the command specs depend on.
+2. Once §7 is resolved enough to write real behavior, build
+   `skills/agentrefinery-design/SKILL.md`,
+   `skills/agentrefinery-build/SKILL.md`, and
+   `skills/agentrefinery-build-validation/SKILL.md` from scratch — nothing
+   from the old, combined-design versions of these can be reused verbatim,
+   since they described building a Rail, not refining one.
+3. Decide whether `refinery-process-name/` needs its own tracking/log file
+   (an equivalent to the old per-Rail `Changelog.md`, now removed — see
+   `PRD.md` §3, item 2) once the above is settled.

@@ -6,6 +6,11 @@
  * (agentrefinery-design, agentrefinery-build, agentrefinery-build-validation)
  * into whichever Agent-Skills-compatible tool(s) the user picks.
  *
+ * NOTE: as of the 2026-07-28 split from the sibling AgentRails project,
+ * none of these 3 skills exist yet -- see PRD.md sec.7 for the open items
+ * (what defines "better" across refinement passes, etc.) that block writing
+ * them. `install` below detects this and reports it instead of crashing.
+ *
  * Usage:
  *   npx agent-refinery install [--target <name>[,<name>...]] [--global] [--dir <path>] [--yes]
  *   npx agent-refinery list
@@ -182,7 +187,23 @@ async function resolveScope(args, targets) {
   return answer.toLowerCase().startsWith('g') ? 'global' : 'project';
 }
 
+function checkSkillsExist() {
+  const missing = SKILL_NAMES.filter(
+    (name) => !fs.existsSync(path.join(SKILLS_SOURCE_DIR, name))
+  );
+  if (missing.length === SKILL_NAMES.length) {
+    console.error(
+      `Nothing to install yet: none of AgentRefinery's own skills ` +
+        `(${SKILL_NAMES.join(', ')}) have been built. See PRD.md \u00a77 for ` +
+        `the open items (chiefly: what defines a "better" refinement pass) ` +
+        `that block writing them.`
+    );
+    process.exit(1);
+  }
+}
+
 async function runInstall(args) {
+  checkSkillsExist();
   const targets = await resolveTargets(args);
   if (targets.length === 0) {
     console.error('Error: no installation target given.');
