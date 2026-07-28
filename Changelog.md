@@ -13,6 +13,32 @@ under `[Unreleased]`.
 
 ## [Unreleased]
 
+### Added
+
+- **Settled the full 2-command pipeline (2026-07-28), resolving every open
+  item left by the initial split-off PRD.** AgentRefinery ships exactly 2
+  commands — `agentrefinery-build` and `agentrefinery-build-validation` —
+  with no `agentrefinery-design` (deliberate, documented exception: unlike
+  building a Rail, there's no upstream ambiguity to resolve, since
+  `Backbone.md` is already fixed and the first pass's real output already
+  exists). Together they build and validate a third, generated command,
+  `process-name-refine` — the actual runtime artifact this project
+  produces per Rail.
+- Introduced the **Refinement Engine specification** concept: a
+  standalone, pluggable, user-replaceable document defining how to compare
+  a fresh pass against a best-so-far result and decide "better" — this
+  resolves what had been the single biggest open question. Bundled one
+  reference implementation, `engines/ResearchRefinementEngine.md`, tuned
+  for research-style processes and translated in full from the user's
+  original Spanish draft.
+- Wrote `skills/agentrefinery-build/SKILL.md` and
+  `skills/agentrefinery-build-validation/SKILL.md` from the settled spec.
+- Renamed the generated skill's own runtime output directory from
+  `refinery-process-name/` to `output-process-name-refine/`, fixing a
+  naming collision with the generated skill package directory
+  (`process-name-refine/`) and following AgentRails' own `output-` prefix
+  convention.
+
 ### Changed
 
 - **Split the original combined project into two sibling repos
@@ -23,18 +49,20 @@ under `[Unreleased]`.
   separate **AgentRails** repo. `skills/agentrefinery-design/`,
   `skills/agentrefinery-build/`, `skills/agentrefinery-build-validation/`,
   and `templates/*.md` were moved there (renamed to `agentrails-*`), not
-  copied — this repo's `skills/` and `templates/` are empty again.
-- Rewrote `PRD.md`, `README.md`, `CLAUDE.md`, `CONTRIBUTE.md`,
-  `package.json`, and `bin/cli.js` to reflect AgentRefinery's narrowed
+  copied — this repo's `skills/` and `templates/` were emptied at that
+  point, then repopulated later the same day (see "Added," above) once the
+  2-command spec was settled.
+- Rewrote `PRD.md` (now v0.3.0), `README.md`, `CLAUDE.md`, `CONTRIBUTE.md`,
+  `package.json`, and `bin/cli.js` to reflect AgentRefinery's settled
   scope: comparing and improving a Rail's output across N repeated runs,
-  consuming Rails built by the sibling AgentRails project as input. Much
-  of this narrowed scope is documented as an open item (`PRD.md` §7)
-  rather than settled behavior — the exact command specs for
-  `agentrefinery-design` / `agentrefinery-build` /
-  `agentrefinery-build-validation` are not yet resolved.
-- Appended a new dated entry to `DESIGN-NOTES.md` documenting the split
-  and its rationale, without rewriting the file's prior history (the
-  original combined-project design remains at the top of that file as a
+  consuming Rails built by the sibling AgentRails project as input.
+- Removed the now-unused `templates/` directory — AgentRefinery has no
+  document types of its own beyond `RefinementPlan.md` and
+  `refinement-engine.md`, both described directly in `PRD.md` §7.
+- Appended new dated entries to `DESIGN-NOTES.md` documenting first the
+  split and then the later same-day resolution of every open item, without
+  rewriting the file's prior history (the original combined-project design
+  and the first, fully-open split-off attempt both remain in that file as
   historical record).
 
 ### Added (from the original combined project, prior to the split)

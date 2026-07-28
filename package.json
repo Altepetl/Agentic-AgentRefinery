@@ -1,7 +1,7 @@
 {
   "name": "agent-refinery",
   "version": "0.1.0",
-  "description": "Installer for the AgentRefinery Agent Skills (agentrefinery-design, agentrefinery-build, agentrefinery-build-validation) across Claude Code, Google Antigravity, Cursor, ZCode, Kimi Code CLI, and other Agent-Skills-compatible tools. NOTE: these 3 skills don't exist yet -- see PRD.md sec.7 for the open items blocking them; running install currently reports that instead of installing anything.",
+  "description": "Installer for the AgentRefinery Agent Skills (agentrefinery-build, agentrefinery-build-validation) across Claude Code, Google Antigravity, Cursor, ZCode, Kimi Code CLI, and other Agent-Skills-compatible tools. These 2 skills build and validate a third, generated command -- process-name-refine -- which compares a Rail's output across N repeated runs and keeps the best result. See PRD.md for the full spec.",
   "license": "MIT",
   "author": "Altepetl",
   "homepage": "https://github.com/Altepetl/AgentRefinery#readme",
@@ -15,7 +15,7 @@
   "files": [
     "bin/",
     "skills/",
-    "templates/",
+    "engines/",
     "README.md",
     "PRD.md",
     "LICENSE"

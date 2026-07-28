@@ -2,17 +2,15 @@
 
 AgentRefinery does **not** produce Rails. That's the job of the sibling
 **[AgentRails](../AgentRails)** project. AgentRefinery takes an
-already-built Rail (a guide an LLM agent can run repeatedly, produced by
+already-built, already-run, already-validated Rail (produced by
 AgentRails) as a given input, and answers a different question: **across N
 repeated runs of that same Rail, potentially by increasingly capable
 models, is the result actually getting better — and if so, how do we keep
 the best one?**
 
-> For the fuller picture of what's settled and what's still an open
-> question — including the exact mechanism proposed so far and the
-> questions it doesn't yet answer — see [`PRD.md`](./PRD.md). This README
-> is the pitch and current-scope summary; `PRD.md` is the one to trust for
-> detail.
+> For the full spec — every concept, document structure, and command
+> behavior — see [`PRD.md`](./PRD.md). This README is the pitch and
+> quick-reference summary; `PRD.md` is the one to trust for detail.
 
 ## Why this is a separate project from AgentRails
 
@@ -34,69 +32,95 @@ concern clean. Now:
   output across repeated runs, without ever touching the Rail's own
   definition or how AgentRails runs it.
 
-## Current status
+## The 2-command pipeline
 
-This repo is **mid-redesign**. The mechanism below is what's been decided
-so far; several real questions about it are still open (see `PRD.md` §7)
-— most importantly, **there is no agreed definition yet of what makes one
-pass's output "better" than another's**. No `skills/agentrefinery-*`
-commands have been built yet; `skills/` and `templates/` in this repo are
-currently empty placeholders.
-
-## The mechanism, as far as it's settled
-
-AgentRefinery mirrors AgentRails' 3-command naming pattern with its own
-commands — `agentrefinery-design`, `agentrefinery-build`,
-`agentrefinery-build-validation` — kept entirely separate so nothing about
-AgentRails' own commands has to change.
-
-What's settled about how they behave:
-
-- After a Rail's `process-name` skill (from AgentRails) finishes a run,
-  `agentrefinery-build`'s generated skill copies the entire contents of
-  `output-process-name/` into AgentRefinery's own directory,
-  `refinery-process-name/`. This keeps AgentRails' own output directory
-  clean and ready for its next destructive restart, while
-  `refinery-process-name/` is where AgentRefinery keeps its accumulated
-  best-so-far result.
-- A step the design conversation referred to as **"Refinación"**
-  (Refinement) then compares the fresh `output-process-name/` pass against
-  the existing `refinery-process-name/` (if one already exists). Only if
-  the fresh pass is genuinely better does it get written into
-  `refinery-process-name/`, replacing what was there. Otherwise
-  `refinery-process-name/` is left alone.
-
-That's what makes `refinery-process-name/` behave as a monotonically
-improving result across N runs, even though each individual `process-name`
-run (via AgentRails) has no memory of the prior pass.
-
-**Not yet decided** (see `PRD.md` §7 for the full list): which of the 3
-commands actually implements "Refinación"; what concretely defines
-"better"; whether the comparison happens on the whole output or
-per-deliverable; what `agentrefinery-build-validation` validates; what
-`agentrefinery-design` does at all, given refinement isn't a document-
-drafting problem the way building a Rail is; and who orchestrates running
-`process-name` a 2nd, 3rd, ... Nth time.
-
-## Directory shape implied so far
+Unlike AgentRails, AgentRefinery ships only **2 commands**, not 3 — there's
+no `agentrefinery-design`. Building a Rail requires resolving ambiguity in
+a raw process description up front; refining one doesn't, because the
+objectives are already fixed (`Backbone.md`, already reviewed and built by
+AgentRails) and the first pass's actual output already exists
+(`output-process-name/`, already validated). See `PRD.md` §3, item 4, for
+the full rationale.
 
 ```
-<process-name>/                       ← the Rail, built and owned by AgentRails
-├── context/                          ← untouched by AgentRefinery
-├── output-process-name/              ← owned by AgentRails; wiped on its own
-│                                        destructive restart
-├── process-name/SKILL.md             ← untouched by AgentRefinery
-├── process-name-validation/SKILL.md  ← untouched by AgentRefinery
-└── refinery-process-name/            ← owned by AgentRefinery; accumulates the
-                                          best-so-far result across passes
+agentrefinery-build              → builds process-name-refine/SKILL.md
+agentrefinery-build-validation   → one-shot QA check on that build
+                                     (does not itself produce a runnable skill)
+```
+
+The single runtime artifact this project produces, per Rail, is
+**`process-name-refine`** — the third command in the overall scheme,
+alongside AgentRails' own `process-name` and `process-name-validation`.
+
+## How refinement actually works
+
+`agentrefinery-build` reads a Rail's `context/Backbone.md`, the actual
+deliverables in `output-process-name/`, and a **Refinement Engine
+specification** — a standalone, pluggable document defining *how* to
+compare a fresh pass against a best-so-far result and decide whether it's
+an improvement. This is AgentRefinery's answer to the hardest question in
+this space, **what makes one pass "better" than another**: rather than
+hardcoding one universal definition (which doesn't generically exist), the
+definition is an input parameter, the same way a process description is
+AgentRails' input.
+
+This repo ships one reference Refinement Engine spec,
+[`engines/ResearchRefinementEngine.md`](./engines/ResearchRefinementEngine.md),
+tuned for refining **research-style processes** (semantic matching,
+clustering, evidence scoring, contradiction detection, ranking, LLM
+synthesis, targeted follow-up research). It's a reference example, not the
+only valid shape — a process whose deliverable isn't a set of research
+findings needs a differently-shaped spec, and users are expected to supply
+their own. Users who care about refinement quality for a specific,
+valuable process are encouraged to invest real budget in a stronger,
+domain-tuned spec — for example, commissioning a more capable, more
+expensive LLM to draft one. **Like a Rail itself, AgentRefinery's job is
+only to provide the guardrail that lets whichever engine spec is supplied
+run consistently — it is not the ceiling on refinement quality.**
+
+The generated `process-name-refine` skill:
+
+- **Bootstraps** if `output-process-name-refine/` is empty: copies
+  `output-process-name/` there, logs a `SEEDED` row, and tells the user to
+  re-run the Rail (ideally with a different/more capable LLM) before
+  refining again.
+- **Compares** once a best-so-far baseline exists: applies
+  `RefinementPlan.md`'s steps to decide whether the fresh pass is genuinely
+  better, and if so replaces the accumulated best-so-far — logging
+  `IMPROVED`, `NOT_IMPROVED`, or `BLOCKED` (escalated to the user) either
+  way.
+
+`/process-name-refine` can be re-run on its own, but since the comparison
+isn't fully deterministic, the best results come from repeating the full
+cycle — `/process-name` → `/process-name-validation` → `/process-name-refine`
+— varying the LLM each time, not from re-running `/process-name-refine`
+alone against the same two directories.
+
+## Directory shape
+
+```
+<process-name>/                            ← the Rail, built and owned by AgentRails
+├── context/                               ← untouched by AgentRefinery
+├── output-process-name/                   ← owned by AgentRails; wiped on its own
+│                                             destructive restart
+├── process-name/SKILL.md                  ← untouched by AgentRefinery
+├── process-name-validation/SKILL.md       ← untouched by AgentRefinery
+├── process-name-refine/                   ← AgentRefinery's generated skill package
+│   ├── SKILL.md
+│   ├── RefinementPlan.md
+│   └── refinement-engine.md
+└── output-process-name-refine/            ← AgentRefinery's own runtime output;
+    ├── RefinementTracking.md                 survives output-process-name/ being
+    └── (accumulated best-so-far               wiped and re-run
+        deliverables)
 ```
 
 ## Minimum requirements
 
-- **[AgentRails](../AgentRails)** — a Rail must already exist and be
-  runnable before there's anything for AgentRefinery to refine.
-- **[skill-creator](https://claude.com/plugins/skill-creator)** — expected
-  to remain a hard prerequisite for AgentRefinery's own build commands too,
-  once they're built, consistent with how AgentRails scaffolds its
-  generated skills. Not yet exercised since no `agentrefinery-*` skill has
-  been built yet.
+- **[AgentRails](../AgentRails)** — a Rail must already exist, have run
+  once via `process-name`, and been confirmed by `process-name-validation`
+  before there's anything for AgentRefinery to refine.
+- **[skill-creator](https://claude.com/plugins/skill-creator)** — hard
+  prerequisite for both `agentrefinery-build` and
+  `agentrefinery-build-validation`, consistent with how AgentRails
+  scaffolds its own generated skills.

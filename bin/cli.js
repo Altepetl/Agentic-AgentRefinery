@@ -3,13 +3,13 @@
 
 /**
  * agent-refinery CLI — installs the AgentRefinery Agent Skills
- * (agentrefinery-design, agentrefinery-build, agentrefinery-build-validation)
- * into whichever Agent-Skills-compatible tool(s) the user picks.
+ * (agentrefinery-build, agentrefinery-build-validation) into whichever
+ * Agent-Skills-compatible tool(s) the user picks.
  *
- * NOTE: as of the 2026-07-28 split from the sibling AgentRails project,
- * none of these 3 skills exist yet -- see PRD.md sec.7 for the open items
- * (what defines "better" across refinement passes, etc.) that block writing
- * them. `install` below detects this and reports it instead of crashing.
+ * These 2 skills build and validate a third, generated command --
+ * process-name-refine -- which compares a Rail's output across N repeated
+ * runs (potentially by increasingly capable LLMs) and keeps the best result.
+ * See PRD.md for the full spec.
  *
  * Usage:
  *   npx agent-refinery install [--target <name>[,<name>...]] [--global] [--dir <path>] [--yes]
@@ -25,7 +25,6 @@ const readline = require('readline');
 const PACKAGE_ROOT = path.join(__dirname, '..');
 const SKILLS_SOURCE_DIR = path.join(PACKAGE_ROOT, 'skills');
 const SKILL_NAMES = [
-  'agentrefinery-design',
   'agentrefinery-build',
   'agentrefinery-build-validation',
 ];
@@ -193,10 +192,10 @@ function checkSkillsExist() {
   );
   if (missing.length === SKILL_NAMES.length) {
     console.error(
-      `Nothing to install yet: none of AgentRefinery's own skills ` +
-        `(${SKILL_NAMES.join(', ')}) have been built. See PRD.md \u00a77 for ` +
-        `the open items (chiefly: what defines a "better" refinement pass) ` +
-        `that block writing them.`
+      `Nothing to install: none of AgentRefinery's own skills ` +
+        `(${SKILL_NAMES.join(', ')}) were found under ${SKILLS_SOURCE_DIR}. ` +
+        `This looks like a broken or incomplete install of the agent-refinery ` +
+        `package itself -- see PRD.md \u00a78 for the expected skill specs.`
     );
     process.exit(1);
   }

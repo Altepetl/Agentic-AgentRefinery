@@ -373,17 +373,107 @@ what `agentrefinery-build-validation` validates, what `agentrefinery-
 design` even does here, and who orchestrates running `process-name` a
 2nd/3rd/Nth time).
 
+---
+
+## 2026-07-28 (continued) — 2-command pipeline settled; all §7 open items resolved
+
+The prior entry above left the entire command spec open — no agreed
+definition of "better," no agreed command implementing "Refinación," no
+answer for `agentrefinery-design`. This entry resolves all of it, via a
+direct design proposal from the user later the same day, confirmed with 6
+clarifying answers. **`PRD.md` v0.3.0 is the authoritative record of this
+resolution** — this entry summarizes what changed and why, per this file's
+own "log, don't duplicate the spec" role.
+
+**No `agentrefinery-design`.** Resolved as a deliberate, documented
+exception rather than an open item: unlike building a Rail, there's no
+upstream ambiguity to resolve before `agentrefinery-build` can run — the
+objectives are already fixed (`Backbone.md`) and the first pass's actual
+output already exists (`output-process-name/`, already validated).
+AgentRefinery ships exactly 2 commands: `agentrefinery-build` and
+`agentrefinery-build-validation` (kept fully hyphen-separated for naming
+consistency with AgentRails, even without a `-design` command to
+disambiguate it from — user's answer: "Mantener la consistencia").
+
+**"What defines better" resolved by making it a pluggable input**: the
+**Refinement Engine specification** concept. Rather than AgentRefinery
+hardcoding one universal definition of "better" (which can't exist
+generically), it's a standalone, user-replaceable document `agentrefinery-
+build` reads as a third input (alongside `Backbone.md` and
+`output-process-name/`). This repo bundles one reference implementation for
+research-style processes — the user's original Spanish draft,
+`ResearchRefinementEngine.md`, translated in full to English (per this
+project's standing "English only, everywhere" rule) and relocated to
+`engines/ResearchRefinementEngine.md`. The user was explicit that this is a
+reference example only, not a universal default: users should supply their
+own for other kinds of processes, and are explicitly encouraged to invest
+real budget in a stronger, domain-tuned spec — e.g. commissioning a more
+capable, more expensive LLM to draft one. Framing, verbatim from the user:
+"Al final nuestro proceso de refinación, al igual que los rieles, solo son
+los guardarrailes para el agente de IA" — AgentRefinery (like a Rail) is
+the guardrail that lets whichever spec is supplied run consistently, not
+the ceiling on refinement quality. See `PRD.md` §5.3.
+
+**Which command implements "Refinación": neither build command does — the
+generated `process-name-refine` skill does, at runtime, every time it's
+invoked.** `agentrefinery-build` runs exactly once per Rail, to construct
+`process-name-refine/SKILL.md` (confirmed directly by the user: "Es
+correcto, solo se ejecuta una vez, para construir el comando:
+/proccess-name-refine"). The actual pass-to-pass comparison logic — the
+part that decides SEEDED / IMPROVED / NOT_IMPROVED / BLOCKED — lives
+inside that generated skill's own runtime behavior, not inside
+`agentrefinery-build` itself.
+
+**What `agentrefinery-build-validation` validates**: traceability, mirroring
+how `agentrails-build-validation` validates `Workflow.md` against
+`Backbone.md` (user's answer: "Similar al agentrails-build-validation
+verifica Validation.md") — here, checking `RefinementPlan.md`'s steps each
+cite a real Backbone ID and a real Refinement Engine stage, and that every
+Backbone ID is covered. Unlike `agentrails-build-validation`, it does not
+produce a second runnable skill — it's a one-shot QA check, since the only
+runtime artifact this project produces per Rail is `process-name-refine`
+itself.
+
+**Naming collision caught and fixed**: the user's original phrasing reused
+`process-name-refine/` for both the generated skill package directory and
+its own runtime output directory. Confirmed and renamed the output
+directory to `output-process-name-refine/`, following AgentRails' own
+`output-` prefix convention (user: "Si, tienes razon.").
+
+**`output-process-name-refine/` does need its own tracking file** —
+`RefinementTracking.md`, schema `ITERATION | AGENT | VERDICT | CONFIDENCE |
+DETAILS | START | END`, permanent and never cleared (unlike AgentRails' own
+tracking files, which get wiped by a Rail's own Phase 4 restart). See
+`PRD.md` §9.1.
+
+**Who orchestrates running `process-name` again**: the user, manually,
+ideally varying the LLM each cycle. `/process-name-refine` can be re-run on
+its own, but since its comparison isn't fully deterministic, the best
+results come from repeating the full `/process-name` →
+`/process-name-validation` → `/process-name-refine` cycle — this
+recommendation must appear in the generated skill's own Readme/description
+text, not just be documented here.
+
+**Result**: `PRD.md` rewritten to v0.3.0 as the fully consolidated,
+settled spec (§3 for the full naming/rationale history, §5 for the
+Refinement Engine concept, §6–§9 for the 2-command pipeline and the
+generated skill's runtime mechanics). `skills/agentrefinery-build/SKILL.md`
+and `skills/agentrefinery-build-validation/SKILL.md` written from this
+spec. `templates/` removed (empty, no longer referenced — AgentRefinery has
+no document types of its own beyond what's described in §7's directory
+layout).
+
 ## Open items for next session (current)
 
-1. Resolve `PRD.md` §7 items, ideally with the user directly rather than
-   guessing — especially "what defines better," since that's the concept
-   the rest of the command specs depend on.
-2. Once §7 is resolved enough to write real behavior, build
-   `skills/agentrefinery-design/SKILL.md`,
-   `skills/agentrefinery-build/SKILL.md`, and
-   `skills/agentrefinery-build-validation/SKILL.md` from scratch — nothing
-   from the old, combined-design versions of these can be reused verbatim,
-   since they described building a Rail, not refining one.
-3. Decide whether `refinery-process-name/` needs its own tracking/log file
-   (an equivalent to the old per-Rail `Changelog.md`, now removed — see
-   `PRD.md` §3, item 2) once the above is settled.
+None outstanding from the design conversation itself. Remaining work is
+implementation follow-through, not open design questions:
+
+1. Exercise the pipeline end to end against a real, AgentRails-built Rail
+   once one exists: `agentrefinery-build` → `agentrefinery-build-
+   validation` → the generated `/process-name-refine`, both on an empty
+   `output-process-name-refine/` (bootstrap path) and against an existing
+   baseline (comparison path).
+2. Consider whether additional bundled Refinement Engine specs (beyond the
+   research-synthesis-tuned default) are worth adding for other common
+   process shapes (e.g. code generation, document drafting) — not blocking,
+   since users are already expected to supply their own for such cases.

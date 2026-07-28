@@ -3,18 +3,18 @@
 AgentRefinery is the **builder repo for the refinement concern only** — it
 does not produce Rails (that's the sibling **AgentRails** project) and it
 is not one itself. Read `README.md` and `PRD.md` before changing anything;
-`PRD.md` is the canonical spec, and it is unusually candid about what's
-still an **open item** (§7) rather than settled design — most contribution
-work right now should be resolving those open items, not building on top
-of assumed answers to them.
+`PRD.md` is the canonical spec and now reflects a settled 2-command
+mechanism, following the 2026-07-28 design conversation that resolved the
+open items left by the first split-off attempt.
 
 ## Before you start
 
 1. Read `README.md` (the pitch + current-scope summary).
-2. Read `PRD.md` in full, especially §7 (open items) and §3 (naming/split
-   history) — this project is mid-redesign after the 2026-07-28 split from
-   AgentRails, and most contribution mistakes right now would come from
-   assuming an open item is already decided.
+2. Read `PRD.md` in full, especially §3 (naming/design decisions and their
+   rationale) and §5 (the Refinement Engine specification concept) — this
+   project's core design question, "what makes one pass better than
+   another," is answered by making that definition a pluggable input
+   (§5.1), not something AgentRefinery hardcodes.
 3. Do not duplicate AgentRails' own documentation here. If a change you're
    making describes the Rail mechanism itself (fixed core/judgment zone,
    the 5-document context bundle, `process-name`'s own state machine),
@@ -24,63 +24,73 @@ of assumed answers to them.
 
 - **English only, everywhere.** No exceptions for etymology notes,
   parenthetical asides, or terms that started as shorthand in a design
-  discussion.
+  discussion — including `engines/ResearchRefinementEngine.md`, which was
+  translated from an original Spanish draft for this exact reason.
 - **Command and file names are fully hyphen-separated** — no concatenated
   compound words (`agentrefinery-build-validation`, never
   `agentrefinery-buildvalidation`).
-- **Assume nothing; document everything.** Especially important here:
-  resist filling `PRD.md` §7's open items with plausible-sounding invented
-  behavior. Either resolve them with the user, or leave them marked open.
+- **Assume nothing; document everything.** Especially: don't hardcode a
+  definition of "better" into `agentrefinery-build` or its generated
+  skill — it must always be derived from whichever Refinement Engine spec
+  is resolved (the bundled default or a user-supplied one), per `PRD.md`
+  §5.
 - **Preserve bold/italic emphasis through edits** — formatting is
   independent of wording.
 - **Never modify AgentRails.** AgentRefinery reads a Rail's runtime output
-  (`output-process-name/`) and writes to its own directory
-  (`refinery-process-name/`); it never writes into a Rail's `context/`, a
-  Rail's `output-process-name/`, or either of AgentRails' generated skills.
+  (`output-process-name/`) and writes only to directories it owns itself
+  (`process-name-refine/` and `output-process-name-refine/`); it never
+  writes into a Rail's `context/`, a Rail's `output-process-name/`, or
+  either of AgentRails' generated skills.
 
-## Resolving `PRD.md` §7's open items
+## Modifying `skills/*/SKILL.md`
 
-This is currently the highest-value contribution: each open item blocks a
-real command spec for `agentrefinery-design` / `agentrefinery-build` /
-`agentrefinery-build-validation`. When one gets resolved (ideally by
-asking the user directly, since these are judgment calls about product
-direction, not implementation details):
+- Keep the `skill-creator` hard prerequisite for both
+  `agentrefinery-build` and `agentrefinery-build-validation`, consistent
+  with how AgentRails scaffolds its own generated skills — don't hand-roll
+  `SKILL.md` packaging.
+- `agentrefinery-build` is the one command in this pipeline allowed a small
+  amount of judgment (mapping `Backbone.md` objectives to Refinement
+  Engine stages) — see `PRD.md` §3, item 4, for why that's a deliberate,
+  documented exception rather than an oversight. Don't extend that
+  judgment scope elsewhere without updating `PRD.md` first.
+- `agentrefinery-build-validation` stays purely mechanical — a one-shot QA
+  check on `RefinementPlan.md`'s traceability. It does not produce a second
+  runnable skill; don't add one.
 
-- Update `PRD.md` §5 (settled mechanism) and §7 (remove or narrow the
-  resolved item).
-- Append an entry to `DESIGN-NOTES.md` documenting the resolution and why.
-- Only then start writing the corresponding `skills/agentrefinery-*/
-  SKILL.md` — building a command around an unresolved open item just
-  moves the ambiguity downstream instead of resolving it.
+## Adding or changing a Refinement Engine specification
 
-## Modifying `skills/*/SKILL.md` (once they exist)
-
-- Keep the `skill-creator` hard prerequisite, consistent with how
-  AgentRails scaffolds its own generated skills — don't hand-roll `SKILL.md`
-  packaging.
-- Keep the division of labor AgentRails established: only
-  `agentrefinery-design` should require LLM reasoning; `agentrefinery-build`
-  and `agentrefinery-build-validation` should be mechanical once design's
-  ambiguity is resolved — assuming `agentrefinery-design` ends up owning
-  that role at all (see `PRD.md` §7, open item 5, which is itself still
-  open).
+- `engines/ResearchRefinementEngine.md` is a **reference example**, not the
+  only valid shape a Refinement Engine spec can take — see `PRD.md` §5.2.
+  If you're adding a new bundled spec for a different kind of process
+  (e.g. code generation, document drafting), it needs its own definition
+  of what a "claim," "contradiction," or "evidence" means for that output
+  type; don't force it into the research-synthesis shape.
+- Document, wherever a Refinement Engine spec is introduced or referenced,
+  that AgentRefinery (like a Rail) is only a guardrail for consistently
+  running whichever spec is supplied — not the ceiling on refinement
+  quality. Users are expected to be able to invest real budget in a
+  stronger, domain-tuned spec.
 
 ## Testing changes
 
-No automated test suite exists. Once real `agentrefinery-*` skills exist,
-the first real validation is running a full refinement cycle (multiple
-passes of an AgentRails-built Rail's `process-name`, followed by
-AgentRefinery's own commands) against a real Rail and checking whether
-`refinery-process-name/` actually ends up holding the best result across
-passes. Build any test artifacts under `/sandbox/` at the repo root
-(gitignored) — never commit a Rail or a refinement run into this repo.
+No automated test suite exists. The first real validation of a change is
+running a full refinement cycle against a real, AgentRails-built Rail:
+`agentrefinery-build` → `agentrefinery-build-validation` → the generated
+`/process-name-refine`, invoked both on an empty
+`output-process-name-refine/` (bootstrap path) and against an existing
+baseline (comparison path) — and checking that
+`output-process-name-refine/` ends up holding the best result across
+passes, with `RefinementTracking.md` reflecting an accurate history. Build
+any test artifacts under `/sandbox/` at the repo root (gitignored) — never
+commit a Rail or a refinement run into this repo.
 
 ## Recording decisions
 
-- **`PRD.md`** is the canonical spec — update §5 and §7 whenever an open
-  item is resolved.
+- **`PRD.md`** is the canonical spec — update it first for any conceptual
+  change.
 - **`DESIGN-NOTES.md`** is the working log — append new entries as you go,
   don't rewrite its history (including the now-superseded combined-project
-  design at the top of the file).
+  design and the first, fully-open split-off attempt, both preserved at
+  the top of the file).
 - **`Changelog.md`** (this repo's own, not a Rail's) records what shipped,
   not why — keep entries short and factual.
